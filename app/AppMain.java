@@ -42,6 +42,32 @@ public class AppMain {
 
         System.out.println("\n[App] Rede estabilizada. Iniciando simulação de trabalho...");
 
+        //////////////// SNAPSHOT NO PRIMEIRO PROCESSO  //////////////////////////
+        // Com a rede estabilizada, buscamos os Ids de todos os processos
+        java.util.List<String> todosIds = new java.util.ArrayList<>(pl.getPeers());
+        todosIds.add(myId);
+        //coloca os Ids em ordem
+        java.util.Collections.sort(todosIds);
+
+        // verifica se o menor id (indice zero) é o deste processo em questão,
+        //se for, ele é quem deve fazer snapshots
+        if (myId.equals(todosIds.get(0))) {
+            System.out.println("[App] Eu sou o Líder do Snapshot. Iniciando sessão...");
+            new Thread(() -> {
+                int currentSnapshotId = 1;
+                while (currentSnapshotId <= 300) {
+                    try {
+                        Thread.sleep(2000); // Intervalo entre capturas
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    dimex.startSnapshot(currentSnapshotId);
+                    currentSnapshotId++;
+                }
+            }).start();
+        } else {
+            System.out.println("[App] Atuando apenas como receptor de Snapshots.");
+        }
 
 
         // 3. O Loop de Trabalho (A Simulação Caótica)

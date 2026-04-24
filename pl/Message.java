@@ -4,7 +4,7 @@ public class Message {
     //Quem enviou
     private String senderId;
     //O tipo da mensagem
-    private String type; // Ex: REQUEST, OK, START
+    private String type; // Ex: REQUEST, OK, MARKER...
     //O clock
     private int clock;   // Relógio lógico (para o DiMex depois)
 
