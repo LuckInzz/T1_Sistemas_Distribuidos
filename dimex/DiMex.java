@@ -39,13 +39,11 @@ public class DiMex implements DiMexListener {
     private String myId;
     private PerfectLink pl;
 
-    /**
-     * CONSTRUTOR
-     * Objetivo: Inicializar o DiMex em estado de repouso e preparar as filas.
-     */
+    //INICIALIZACAO DESTE DIMEX COM O ID DESTE PROCESSO VINDO DO APP
     public DiMex(String myId) {
         this.myId = myId;
         
+        //começa como solto com tudo zerado
         this.state = State.RELEASED;
         this.clock = 0;
         this.requestClock = 0;
@@ -54,6 +52,7 @@ public class DiMex implements DiMexListener {
         this.waitingAcks = new HashSet<>();
     }
 
+    //funcao para setar o pl vinculado a este
     public void setPerfectLink(PerfectLink pl) {
         this.pl = pl;
     }
@@ -62,20 +61,17 @@ public class DiMex implements DiMexListener {
     // INTERFACE COM A APLICAÇÃO (De Cima para Baixo)
     // =========================================================
 
-    /**
-     * ENTRY (Solicita a Região Crítica)
-     * Objetivo: É chamado pela App. Bloqueia a execução até que todos 
-     * os outros processos da rede enviem um "OK".
-     */
+    //Funcao que o APP chama para tentar acesso a sc
     public synchronized void entry() {
         System.out.println("[DiMex] App solicitou ENTRY. Iniciando protocolo...");
         
         // 1. Muda o estado para WANTED e anota o horário do pedido
         this.state = State.WANTED;
         this.clock++; // Incrementa o relógio local
-        this.requestClock = this.clock; // Salva o nosso "ticket"
+        this.requestClock = this.clock; // Salva o timestamp
         
-        // 2. Descobre quem está na rede e coloca todos na lista de "Aguardando OK"
+        // 2. Busca no PL todos os processos da rede
+        //e adiciona na lista de espera
         Set<String> peers = pl.getPeers();
         this.waitingAcks.clear();
         this.waitingAcks.addAll(peers);
@@ -87,15 +83,17 @@ public class DiMex implements DiMexListener {
             return;
         }
 
-        // 3. Dispara a mensagem de REQUEST para todos os conhecidos
+        // 3. Manda um REQUEST para todos os conhecidos da rede
+        //cria a mensagem de request
         Message reqMsg = new Message(myId, "REQUEST", requestClock);
+        //envia par cada um da rede
         for (String peer : peers) {
             pl.send(peer, reqMsg);
             System.out.println("[DiMex] Enviei REQUEST para " + peer);
         }
 
-        // 4. Bloqueia a Thread da App até que a lista de espera esvazie
-        // O método wait() libera o 'synchronized' temporariamente para o deliver() poder rodar
+        // 4. Bloqueia o APP até que chegue o OK de todos os outros da Rede (watingAcks tem que estar vazio)
+        // O método wait() libera o 'synchronized' temporariamente para o deliver() poder rodar ??????
         while (!this.waitingAcks.isEmpty()) {
             try {
                 wait(); 
@@ -105,14 +103,13 @@ public class DiMex implements DiMexListener {
         }
         
         // 5. Se saiu do while, é porque recebemos todos os OKs!
+        //muda o estado para HELD, pois esta na SC
         this.state = State.HELD;
         System.out.println("[DiMex] PERMISSÃO TOTAL RECEBIDA. Estado: HELD");
+        //termina a função liberando APP para escrever
     }
 
-    /**
-     * EXIT (Libera a Região Crítica)
-     * Objetivo: É chamado pela App ao terminar o trabalho. Libera quem estava esperando.
-     */
+    //funcao que o APP chama para liberar a SC
     public synchronized void exit() {
         System.out.println("[DiMex] App solicitou EXIT. Liberando Região Crítica...");
         
@@ -136,46 +133,56 @@ public class DiMex implements DiMexListener {
     // INTERFACE COM O PERFECT LINK (De Baixo para Cima)
     // =========================================================
 
-    /**
-     * DELIVER (Recebe mensagens da Rede)
-     * Objetivo: Processar os REQUESTs e OKs que chegam via TCP.
-     */
+    //recebe requests e oks que chegam da rede
     @Override
     public synchronized void deliver(Message msg) {
+        //pega quem enviou, tipo de msg e o timestamp registrado nela
         String sender = msg.getSenderId();
         String type = msg.getType();
         int msgClock = msg.getClock();
 
-        // 1. Atualização do Relógio de Lamport: MAX(local, recebido) + 1
+        // 1. Atualização do Relógio de Lamport
+        //ve qual é o maior(seu proprio) ou o da mensagem e atualiza já somando este passo
         this.clock = Math.max(this.clock, msgClock) + 1;
 
+        //se é uma mensagem de request
         if (type.equals("REQUEST")) {
             // Lógica Central do Ricart-Agrawala: Decidir se enviamos OK ou se Adiamos
             boolean defer = false;
 
+            //se eu to usando a RC, o outro precisa esperar
             if (this.state == State.HELD) {
-                // Já estamos usando a RC. O outro tem que esperar.
                 defer = true;
-            } else if (this.state == State.WANTED) {
-                // Conflito! Nós também queremos. Quem tem prioridade?
+            } 
+            //se eu to querendo, causa conflito, pois os dois querem
+            else if (this.state == State.WANTED) {
                 // Regra: Menor relógio ganha. Em caso de empate, menor ID ganha.
+                //se o relógio ta antes, tenho prioridade
                 if (this.requestClock < msgClock) {
-                    defer = true; // Nosso pedido é mais antigo. Ele espera.
-                } else if (this.requestClock == msgClock && this.myId.compareTo(sender) < 0) {
-                    defer = true; // Empatou, mas nosso ID é menor (ex: p1 ganha de p2). Ele espera.
+                    defer = true;
+
+                } 
+                //se o relogio é igual, o de menor ID ganha
+                else if (this.requestClock == msgClock && this.myId.compareTo(sender) < 0) {
+                    defer = true; 
                 }
             }
 
+            //se o outro tem que esperar
             if (defer) {
+                //adiciono ele na fila de quem esta esperando
                 deferredQueue.add(sender);
                 System.out.println("[DiMex] REQUEST de " + sender + " ADIADO (Na fila).");
-            } else {
+            } 
+            //se não, mando um OK pra ele, pois ele é prioridade
+            else {
                 // Não queremos a RC ou o pedido dele é mais prioritário que o nosso.
                 Message okMsg = new Message(myId, "OK", this.clock);
                 pl.send(sender, okMsg);
                 System.out.println("[DiMex] Enviei OK imediato para " + sender);
             }
-
+        
+        //se a mensagem recebida é OK, tiro o processo que enviou da lista de acks aguardados
         } else if (type.equals("OK")) {
             // Recebemos uma permissão!
             System.out.println("[DiMex] Recebi OK de " + sender);
@@ -192,6 +199,7 @@ public class DiMex implements DiMexListener {
      * PROCESS CRASHED (Tolerância a Falhas)
      * Objetivo: Evitar Deadlock se um processo morrer antes de mandar o "OK".
      */
+    /////////////////////TALVEZ NAO PRECISE ////////////////////////////////////
     @Override
     public synchronized void processCrashed(String peerId) {
         System.out.println("[DiMex] Notificação de falha processada para: " + peerId);

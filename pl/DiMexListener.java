@@ -4,6 +4,8 @@ package pl;
  * Interface que o módulo DiMex (ou App principal) precisará implementar.
  * O Perfect Link chamará esses métodos para notificar eventos da rede.
  */
+
+//ESSE É O CARA QUE FICA ESCUTANDO A REDE.
 public interface DiMexListener {
     // Chamado quando uma nova mensagem lógica chega perfeitamente
     void deliver(Message msg);

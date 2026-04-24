@@ -10,12 +10,15 @@ import java.net.Socket;
  * Esta classe representa uma conexão única entre você e um outro processo. 
  * Ela roda em sua própria Thread e fica eternamente lendo o InputStream
  */ 
-
+//É classe que represeta a conexão entre 2 processos
 public class PeerConnection extends Thread {
+    //Com quem tu ta conectado
     private String peerId;
+    //qual o socket
     private Socket socket;
     private BufferedReader in;
     private PrintWriter out;
+    //O dimex que ta ouvindo
     private DiMexListener listener;
 
     public PeerConnection(String peerId, Socket socket, DiMexListener listener) {
@@ -34,6 +37,7 @@ public class PeerConnection extends Thread {
 
     // Método exposto para o PerfectLink enviar dados por esta conexão
     public void sendMessage(Message msg) {
+        //manda a msg serializada
         out.print(msg.serialize()); // Já contém o \n
         out.flush(); // Garante que saiu do buffer para a rede
     }

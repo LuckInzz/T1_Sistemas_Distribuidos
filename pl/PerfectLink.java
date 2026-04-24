@@ -95,6 +95,7 @@ public class PerfectLink {
         }).start();
     }
 
+    //ANUNCIA POR UDP QUE ESTA VIVO
     private void startUdpDiscoveryAnnouncer() {
         new Thread(() -> {
             try (DatagramSocket socket = new DatagramSocket()) {
@@ -113,6 +114,7 @@ public class PerfectLink {
         }).start();
     }
 
+    //STARTA O LISTNER PARA OUVIR AS MENSAGENS QUE CHEGAM
     private void startUdpDiscoveryListener() {
         new Thread(() -> {
             try (MulticastSocket socket = new MulticastSocket(MULTICAST_PORT)) {
@@ -144,6 +146,7 @@ public class PerfectLink {
         }).start();
     }
 
+    //FUNCAO QUE CRIA A CONEXAO COM UM OUTRO PROCESSO
     private void connectToPeer(String peerId, String ip, int port) {
         try {
             Socket socket = new Socket(ip, port);
@@ -158,6 +161,7 @@ public class PerfectLink {
         }
     }
 
+    //FUNCAO PARA REALIZAR HANDSHAKE
     private void handleIncomingConnection(Socket socket) throws IOException {
         // Lê a primeira linha para o Handshake (descobrir quem conectou na gente)
         BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));

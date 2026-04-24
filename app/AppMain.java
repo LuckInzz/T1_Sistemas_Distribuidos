@@ -20,6 +20,7 @@ public class AppMain {
             System.err.println("Erro ao alocar porta.");
             System.exit(1);
         }
+        //cria o id -> P + a porta em que esta
         String myId = "p" + portaDinamica;
 
         System.out.println("=========================================");
@@ -27,12 +28,16 @@ public class AppMain {
         System.out.println(" ID: " + myId + " | Porta TCP: " + portaDinamica);
         System.out.println("=========================================\n");
 
+        //cria o propriodimex
         DiMex dimex = new DiMex(myId);
 
+        //cria o proprio PL
         PerfectLink pl = new PerfectLink(myId, portaDinamica, dimex);
 
+        //conecta os dois
         dimex.setPerfectLink(pl);
 
+        //starta o pl para que ele comece a ouvir/enviar
         pl.startNetwork();
 
         System.out.println("\n[App] Rede estabilizada. Iniciando simulação de trabalho...");
@@ -44,14 +49,17 @@ public class AppMain {
 
             // QUER ENTRAR NA REGIÃO CRÍTICA
             System.out.println("[App] Quero acessar o arquivo compartilhado!");
+
+            //pede ao dimex se pode escrever
             dimex.entry(); // O código TRAVA aqui aguardando o Ricart-Agrawala
 
             // ========================================================
             // DENTRO DA REGIÃO CRÍTICA (Protegido pelo DiMex)
             // ========================================================
+            //se chegou ate aquim, quer dizer que o dimex liberou
             System.out.println(">> [App] ENTREI NA RC!");
 
-            // As duas escritas devem acontecer atomicamente dentro da RC
+            // As duas escritas devem acontecer atomicamente dentro da sc
             try (PrintWriter out = new PrintWriter(new FileWriter("rc_log.txt", true))) {
                 out.print(".");
                 out.flush();
@@ -62,7 +70,7 @@ public class AppMain {
             }
 
             // SAI DA REGIÃO CRÍTICA
-            dimex.exit(); // O DiMex envia os OKs para quem ficou esperando
+            dimex.exit(); // O DiMex envia os ok para quem ficou esperando
             System.out.println("<< [App] RC LIBERADA!");
 
         }
