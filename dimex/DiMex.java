@@ -261,13 +261,15 @@ private Set<String> markersReceived = new HashSet<>(); // <-- Adiciona o = new H
 
         // Cria um Snapshot com o estado atual do dimex.
         this.currentSnapshot = new Snapshot(
-                id,
-                this.myId,
-                this.state.name(),
-                this.clock,
-                this.requestClock,
-                this.deferredQueue);
-
+            id, 
+            this.myId, 
+            this.state.name(), 
+            this.clock, 
+            this.requestClock, 
+            this.deferredQueue,
+            this.waitingAcks
+        );
+        
         // Troca para gravando, assim consegue salvar as mensagens que chegam
         this.isRecording = true;
 
