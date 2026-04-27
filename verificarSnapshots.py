@@ -44,11 +44,12 @@ for filename in arquivos:
                 'deferred': deferred, 'waiting': waiting, 'channels': channels
             }
 
-# Contadores de Erros globais
-erros_inv1 = 0
-erros_inv2 = 0
-erros_inv3 = 0
-erros_inv4 = 0
+# Usando SETS para armazenar quais snapshots deram erro em cada invariante
+snaps_erro_inv1 = set()
+snaps_erro_inv2 = set()
+snaps_erro_inv3 = set()
+snaps_erro_inv4 = set()
+snaps_erro_inv5 = set()
 
 print("INICIANDO VERIFICACAO DETALHADA DOS SNAPSHOTS")
 
@@ -77,7 +78,7 @@ for snap_id in sorted(global_snapshots.keys()):
     print(f"  -> Processos em HELD encontrados: {len(held_nodes)} {held_nodes}")
     if len(held_nodes) > 1:
         print("  [X] ERRO INV 1: Violacao! Multiplos processos na Regiao Critica.")
-        erros_inv1 += 1
+        snaps_erro_inv1.add(snap_id)
     else:
         print("  [V] OK: Regra respeitada.")
 
@@ -93,14 +94,14 @@ for snap_id in sorted(global_snapshots.keys()):
             print(f"  -> {pid} esta RELEASED. Checando filas vazias... ", end="")
             if len(deferred) > 0 or len(waiting) > 0:
                 print(f"[X] ERRO INV 2: Filas sujas! Def={deferred}, Wait={waiting}")
-                erros_inv2 += 1
+                snaps_erro_inv2.add(snap_id)
             else:
                 print("[V] OK.")
         elif state == 'HELD':
             print(f"  -> {pid} esta HELD. Checando se não aguarda ninguem... ", end="")
             if len(waiting) > 0:
                 print(f"[X] ERRO INV 2: Ainda aguarda {waiting}!")
-                erros_inv2 += 1
+                snaps_erro_inv2.add(snap_id)
             else:
                 print("[V] OK.")
         else: # WANTED
@@ -108,7 +109,7 @@ for snap_id in sorted(global_snapshots.keys()):
 
     # --- INVARIANTE 3: Conservação de Mensagens ---
     print("\n[INV 3] CONSERVACAO DE MENSAGENS (Pedidos nao somem na rede):")
-    print("  Regra: Se um no aguarda um OK, a sua solicitacao deve estar no cabo, ou na fila do destino, ou o OK deve estar voltando.")
+    print("  Regra: Se um processoi aguarda OK, a sua solicitacao deve estar no cabo, ou na fila do destino, ou o OK deve estar voltando.")
     inv3_testado = False
     for pid, data in processes.items():
         for peer_id in data['waiting']:
@@ -131,7 +132,8 @@ for snap_id in sorted(global_snapshots.keys()):
                 print("     [V] OK: A intenção esta devidamente registrada na rede ou no alvo.")
             else:
                 print("     [X] ERRO INV 3: Mensagem perdida! Nao ha rastro da requisicao.")
-                erros_inv3 += 1
+                snaps_erro_inv3.add(snap_id)
+
     if not inv3_testado:
         print("  -> Nenhum processo estava aguardando (waiting vazio). [V] OK.")
 
@@ -156,7 +158,7 @@ for snap_id in sorted(global_snapshots.keys()):
                 print("     [V] OK: Justificado porque já está usando a Seção Crítica (HELD).")
             elif state == 'RELEASED':
                 print("     [X] ERRO INV 4: Injustificado! Processo RELEASED nao pode reter OK.")
-                erros_inv4 += 1
+                snaps_erro_inv4.add(snap_id)
             elif state == 'WANTED':
                 peer_req_clock = peer_data['req_clock']
                 print(f"     Comparando prioridades: Meu ReqClock ({req_clock}) vs Do Alvo ({peer_req_clock})")
@@ -169,18 +171,69 @@ for snap_id in sorted(global_snapshots.keys()):
                         print(f"     [V] OK: Empate de relogio, mas ID menor vence ({pid} < {deferred_peer}).")
                     else:
                         print(f"     [X] ERRO INV 4: Empate de relogio, mas ID maior segurou ID menor!")
-                        erros_inv4 += 1
+                        snaps_erro_inv4.add(snap_id)
                 else:
                     print(f"     [X] ERRO INV 4: Violacao! Relogio MAIOR ({req_clock}) segurou relogio MENOR ({peer_req_clock})!")
-                    erros_inv4 += 1
+                    snaps_erro_inv4.add(snap_id)
     if not inv4_testado:
         print("  -> Ninguem foi colocado na geladeira (deferred vazio). [V] OK.")
+
+
+    # --- INVARIANTE 5: Validade das Mensagens em Trânsito (Sem Fantasmas) ---
+    print("\n[INV 5] VALIDADE DAS MENSAGENS EM TRANSITO (Sem Fantasmas):")
+    print("  Regra: Mensagens voando na rede devem fazer sentido com o estado atual de quem as enviou.")
+    inv5_testado = False
+    
+    for pid, data in processes.items():
+        # Canais salvos no snapshot de 'pid' são mensagens vindas de 'peer_id' PARA 'pid'
+        for peer_id, msgs in data['channels'].items():
+            if not msgs or msgs == ['VAZIO']:
+                continue
+                
+            if peer_id not in processes:
+                print(f"    [!] Ignorado: Mensagens de {peer_id} para {pid}, mas {peer_id} nao esta no log.")
+                continue
+            
+            inv5_testado = True
+            sender_state = processes[peer_id]['state']
+            
+            # Regra 5.1: Se tem REQUEST no canal, o remetente (peer_id) TEM que estar WANTED
+            if 'REQUEST' in msgs:
+                print(f"  -> 'REQUEST' em transito de {peer_id} para {pid}. Estado do remetente ({peer_id}): {sender_state}")
+                if sender_state != 'WANTED':
+                    print(f"    [X] ERRO INV 5: Fantasma! {peer_id} enviou REQUEST mas seu estado é {sender_state}.")
+                    snaps_erro_inv5.add(snap_id)
+                else:
+                    print("    [V] OK: Remetente está WANTED, justificando o REQUEST no canal.")
+            
+            # Regra 5.2: Se tem OK no canal, o remetente (peer_id) NAO PODE estar HELD
+            if 'OK' in msgs:
+                print(f"  -> 'OK' em transito de {peer_id} para {pid}. Estado do remetente ({peer_id}): {sender_state}")
+                if sender_state == 'HELD':
+                    print(f"    [X] ERRO INV 5: Contradição! {peer_id} enviou OK (concedeu acesso) mas está HELD.")
+                    snaps_erro_inv5.add(snap_id)
+                else:
+                    print(f"    [V] OK: Remetente está {sender_state}, justificando o OK no canal.")
+
+    if not inv5_testado:
+        print("  -> Nenhuma mensagem em transito nos canais capturados. [V] OK.")
 
 print(f"\n{'='*70}")
 print("RESUMO FINAL DA AUDITORIA:")
 print(f"Total de Snapshots processados: {len(global_snapshots)}")
-print(f"Erros na Inv 1 (Exclusao Mutua): {erros_inv1}")
-print(f"Erros na Inv 2 (Estado Local)  : {erros_inv2}")
-print(f"Erros na Inv 3 (Conservacao)   : {erros_inv3}")
-print(f"Erros na Inv 4 (Prioridade)    : {erros_inv4}")
+print("-" * 70)
+
+# Formatação limpa para o relatório final
+def formatar_resultado(nome_inv, conjunto_erros):
+    if len(conjunto_erros) == 0:
+        return f"{nome_inv:<30} : 0 erros"
+    else:
+        lista_ordenada = sorted(list(conjunto_erros))
+        return f"{nome_inv:<30} : {len(conjunto_erros)} snapshot(s) com erro -> {lista_ordenada}"
+
+print(formatar_resultado("Teste 1 (Apenas um na SC)", snaps_erro_inv1))
+print(formatar_resultado("Teste 2 (Released = waiting vazio + canal vazio / Held = waiting vazio)", snaps_erro_inv2))
+print(formatar_resultado("Teste 3 (Se tem no waiting: ou REQ ta indo, ou OK ta voltando, ou foi posto na espera)", snaps_erro_inv3))
+print(formatar_resultado("Teste 4 (Prioridade para por na lista de espera - Held, Wanted - c/ menor relogio ou menor ID)", snaps_erro_inv4))
+print(formatar_resultado("Teste 5 (Mensagens em transito condizem com estado do remetente)", snaps_erro_inv5)) 
 print(f"{'='*70}")

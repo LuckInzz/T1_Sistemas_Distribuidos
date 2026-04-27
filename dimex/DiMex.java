@@ -81,7 +81,7 @@ private Set<String> markersReceived = new HashSet<>(); // <-- Adiciona o = new H
         // 1. Muda o estado para WANTED e anota o horário do pedido
         this.state = State.WANTED;
         this.clock++; // Incrementa o relógio local
-        this.requestClock = this.clock; // Salva o timestamp
+        this.requestClock = this.clock; 
 
         // 2. Busca no PL todos os processos da rede
         // e adiciona na lista de espera
@@ -314,7 +314,7 @@ private Set<String> markersReceived = new HashSet<>(); // <-- Adiciona o = new H
      * PROCESS CRASHED (Tolerância a Falhas)
      * Objetivo: Evitar Deadlock se um processo morrer antes de mandar o "OK".
      */
-    ///////////////////// TALVEZ NAO PRECISE ////////////////////////////////////
+    ///////////////////// EXTRA ////////////////////////////////////
     @Override
     public synchronized void processCrashed(String peerId) {
         System.out.println("[DiMex] Notificação de falha processada para: " + peerId);

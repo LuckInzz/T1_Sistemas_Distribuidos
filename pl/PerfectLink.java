@@ -31,9 +31,7 @@ public class PerfectLink {
         this.listener = listener;
     }
 
-    /**
-     * Inicia todo o ecossistema de rede.
-     */
+    //Inicia todo o PL e as conexões a partir da descoberta com TCP até ativar um modulo que escuto e outro que fala
     public void startNetwork() {
         startTcpServer();
         startUdpDiscoveryListener();
@@ -63,10 +61,7 @@ public class PerfectLink {
         System.out.println("[PL] Tamanho do sistema (N) definido para: " + (connections.size() + 1));
     }
 
-    /**
-     * Envia uma mensagem lógica para um processo específico.
-     * O DiMex chamará este método.
-     */
+    //Chamado pelo dimex para enviar msg para outro processo
     public void send(String targetId, Message msg) {
         PeerConnection conn = connections.get(targetId);
         if (conn != null) {

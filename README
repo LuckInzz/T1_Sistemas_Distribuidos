@@ -1,0 +1,24 @@
+Nomes: Allan Groisman Kusbick. Erik Medeiros
+
+Para rodar a aplicação é preciso rodar o AppMain.java dentro da pasta APP.
+
+Cada vez que um novo processo é conectado, tem-se 10 segundos para rodar e conectar um novo,
+    dessa maneira há tempo para rodar a aplicação manualmente diversas vezes
+
+rodar.bat -> NO WINDOWS, Como são necessárias diversas instâncias do mesmo, rodamos através do rodar.bat
+             ele recompila, pede o número de processos ao usuário e roda o AppMain de acordo.
+
+rc_log.txt -> é o arquivo onde a aplicação tenta escrever ".|"
+
+snapshots_idprocesso.log -> são arquivos que guardam os snapshots dos processos
+
+verificar_RC_LOG.py -> verificador simples que verifica se tem inconsistência no rc_log.txt,
+    ou seja, verifica se o app está funcionando
+
+verificarSnapshots.py -> verificador que atua sobre as invariantes do sistema
+
+        Teste 1 (Apenas um na SC - conta quantidades de HELD)      
+        Teste 2 (De acordo com o estado: Released = waiting vazio + canal vazio / Held = waiting vazio) 
+        Teste 3 (Se tem no waiting: ou REQ ta indo, ou OK ta voltando, ou foi posto na espera de outro processo)
+        Teste 4 (Prioridade para por na lista de espera: Held ou Wanted c/ menor relogio ou igual e menor ID) 
+        Teste 5 (Mensagens em transito condizem com estado do remetente: "Req" = Wanted na origem / "OK" = não pode ser HELD)

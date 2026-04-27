@@ -27,4 +27,4 @@ if violacoes:
         tipo = "dois pontos seguidos" if char == '.' else "duas barras seguidas"
         print(f"  posição {pos}: '{trecho}' -> {tipo}")
 else:
-    print("\n[OK] Nenhuma violação. Sequência '.|.|.|...' está correta.")
+    print("\n[OK] Nenhuma violação. Sequência '.|.|.|.' está correta.")
