@@ -232,8 +232,8 @@ def formatar_resultado(nome_inv, conjunto_erros):
         return f"{nome_inv:<30} : {len(conjunto_erros)} snapshot(s) com erro -> {lista_ordenada}"
 
 print(formatar_resultado("Teste 1 (Apenas um na SC)", snaps_erro_inv1))
-print(formatar_resultado("Teste 2 (Released = waiting vazio + canal vazio / Held = waiting vazio)", snaps_erro_inv2))
-print(formatar_resultado("Teste 3 (Se tem no waiting: ou REQ ta indo, ou OK ta voltando, ou foi posto na espera)", snaps_erro_inv3))
-print(formatar_resultado("Teste 4 (Prioridade para por na lista de espera - Held, Wanted - c/ menor relogio ou menor ID)", snaps_erro_inv4))
-print(formatar_resultado("Teste 5 (Mensagens em transito condizem com estado do remetente)", snaps_erro_inv5)) 
+print(formatar_resultado("Teste 2 (De acordo com o estado: Released = waiting vazio + canal vazio / Held = waiting vazio)", snaps_erro_inv2))
+print(formatar_resultado("Teste 3 (Se tem no waiting: ou REQ ta indo, ou OK ta voltando, ou foi posto na espera de outro processo)", snaps_erro_inv3))
+print(formatar_resultado("Teste 4 (Prioridade para por na lista de espera: Held ou Wanted c/ menor relogio ou igual e menor ID)", snaps_erro_inv4))
+print(formatar_resultado("Teste 5 (Mensagens em transito condizem com estado do remetente: Req = Wanted na origem / OK = não pode ser HELD)", snaps_erro_inv5)) 
 print(f"{'='*70}")
